@@ -128,6 +128,15 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
         session.commit()
 
 
+def get_existing_normalized_names(user_id: str) -> list[str]:
+    """Lista todos os normalizedName distintos dos itens dos recibos desse user_id (evitar duplicidade)."""
+    with Session(engine) as session:
+        result = session.execute(
+            select(Item.normalizedName).join(Receipt, Item.receiptId == Receipt.id).where(Receipt.userId == user_id).distinct()
+        )
+        return [row[0] for row in result.all() if row[0]]
+
+
 def count_items_by_receipt(receipt_id: str) -> int:
     """Returns the number of Item rows for the given receipt_id."""
     with Session(engine) as session:
