@@ -1,0 +1,27 @@
+# env
+.venv
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# DB e artefatos
+data/
+toon_output/
+*.db
+
+# Testes / cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

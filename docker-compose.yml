@@ -1,0 +1,16 @@
+services:
+  ocr_service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TOON_DIR=/app/toon_output
+    volumes:
+      - ocr_data:/app/data
+      - ocr_toon:/app/toon_output
+
+volumes:
+  ocr_data:
+  ocr_toon:
