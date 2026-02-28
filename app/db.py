@@ -31,10 +31,10 @@ else:
         pool_pre_ping=True,
     )
 
-# Pipeline status constants
-STATUS_PROCESSANDO = "em processamento"
-STATUS_PROCESSADO = "processado"
-STATUS_ERRO = "erro"
+# Pipeline status constants (English, first letter capitalized)
+STATUS_PROCESSANDO = "Processing"
+STATUS_PROCESSADO = "Processed"
+STATUS_ERRO = "Error"
 
 
 def _now() -> str:
