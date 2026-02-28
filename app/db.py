@@ -31,7 +31,6 @@ else:
         pool_pre_ping=True,
     )
 
-# Pipeline status constants (English, first letter capitalized)
 STATUS_PROCESSANDO = "Processing"
 STATUS_PROCESSADO = "Processed"
 STATUS_ERRO = "Error"

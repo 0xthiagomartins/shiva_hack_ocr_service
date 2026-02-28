@@ -77,8 +77,15 @@ def _run_pipeline_impl(process_id: str, user_id: str, image_b64: str) -> None:
 
         existing_names = get_existing_normalized_names(user_id)
         structured = structure_receipt_with_llm(toon_content, existing_normalized_names=existing_names)
-        insert_receipt_data(process_id, user_id, structured)  # receipt_id = process_id
 
+        # Motor de coerência: se a LLM indicar que não foi possível interpretar, marcar erro e não inserir
+        if structured.get("interpretation_ok") is False:
+            msg = structured.get("interpretation_message") or "Could not interpret receipt."
+            logger.warning("Interpretation rejected for process_id=%s: %s", process_id, msg)
+            set_status(process_id, STATUS_ERRO, error_message=msg)
+            return
+
+        insert_receipt_data(process_id, user_id, structured)  # receipt_id = process_id
         set_status(process_id, STATUS_PROCESSADO)
     except Exception as e:
         tb = traceback.format_exc()
