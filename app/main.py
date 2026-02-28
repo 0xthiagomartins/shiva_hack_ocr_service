@@ -1,6 +1,9 @@
 """FastAPI app e rota HTTPS — recebe process_id + image_b64, orquestra fluxo e atualiza status."""
 
+import logging
 import os
+import threading
+import traceback
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,8 +29,12 @@ from app.ocr import run_ocr_and_save_toon
 from app.preprocess import get_eight_variations
 
 app = FastAPI(title="OCR Cupons Fiscais", version="1.0.0")
+logger = logging.getLogger(__name__)
 
 TOON_DIR = os.environ.get("TOON_DIR", str(Path(__file__).resolve().parent.parent / "toon_output"))
+# Limite de pipelines simultâneos (evita travar com muitos usuários)
+MAX_CONCURRENT_PIPELINES = int(os.environ.get("MAX_CONCURRENT_PIPELINES", "4"))
+_pipeline_semaphore = threading.Semaphore(MAX_CONCURRENT_PIPELINES)
 
 
 class ProcessRequest(BaseModel):
@@ -57,7 +64,12 @@ def startup():
 
 
 def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
-    """Preprocess, OCR, LLM, then insert Items and update Receipt.total_amount."""
+    """Preprocess, OCR, LLM, then insert Items and update Receipt.total_amount. Limitado por semáforo."""
+    with _pipeline_semaphore:
+        _run_pipeline_impl(process_id, user_id, image_b64)
+
+
+def _run_pipeline_impl(process_id: str, user_id: str, image_b64: str) -> None:
     try:
         set_status(process_id, STATUS_PROCESSANDO)
         images = get_eight_variations(image_b64)
@@ -69,7 +81,11 @@ def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
 
         set_status(process_id, STATUS_PROCESSADO)
     except Exception as e:
-        set_status(process_id, STATUS_ERRO, error_message=str(e))
+        tb = traceback.format_exc()
+        err_msg = f"{type(e).__name__}: {e}"
+        err_detail = f"{err_msg}\n\n{tb}"
+        logger.exception("Pipeline failed for process_id=%s: %s", process_id, e)
+        set_status(process_id, STATUS_ERRO, error_message=err_detail)
 
 
 @app.post("/process", response_model=ProcessResponse)

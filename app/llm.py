@@ -6,14 +6,13 @@ import os
 import litellm
 
 
-# Modelo mini para baixo custo
 MODEL = "gpt-4o-mini"
 
 
 def _build_system_prompt(existing_normalized_names: list[str]) -> str:
     base = """You extract receipt items from OCR text. The text may come from up to 8 OCR variants (different brightness/contrast, may have misreads). Analyze all and output a single consolidated list of items.
 
-CRITICAL: List ONLY items that appear in the OCR text. Do NOT invent, assume or add products that are not clearly present in the text. If the text is empty or unreadable, return {"items": []}.
+CRITICAL: List ONLY items that appear in the OCR text. Do NOT invent, assume or add products that are not clearly present in the text. If the text is empty or unreadable, return {{"items": []}}.
 
 AVOID DUPLICATE NORMALIZED NAMES: This user already has the following normalized_name values in their history. You MUST prefer reusing one of these when the product is the same or very similar (e.g. if "Coca-Cola" exists, use "Coca-Cola" for Coke products, not "Coca"). Only create a new normalized_name when no existing one fits. This keeps categories consistent and avoids duplicates like "Coca" and "Coca-Cola".
 Existing normalized names for this user: {existing}
