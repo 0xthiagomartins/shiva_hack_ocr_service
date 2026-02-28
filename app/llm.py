@@ -19,12 +19,12 @@ AVOID DUPLICATE NORMALIZED NAMES: This user already has the following normalized
 Existing normalized names for this user: {existing}
 
 Reply ONLY with valid JSON, no markdown or extra text, in this format:
-{{"items": [{{"description": "product name as on receipt", "normalized_name": "generic product name", "quantity": number, "unit": "UN or KG or L etc", "unit_price": number with 2 decimals, "total_value": number with 2 decimals}}]}}
+{{"items": [{{"description": "product name as on receipt", "normalized_name": "generic product name", "quantity": number, "unit": "UNIT|LITER|MILLILITER|KILOGRAM|GRAM", "unit_price": number with 2 decimals, "total_value": number with 2 decimals}}]}}
 
 - description: product name exactly as read on the receipt (e.g. "AVEIA NESTLE FLOCOS 170G", "LEITE L VIDA ITALAC 1L")
 - normalized_name: generic product name. PREFER reusing one from the existing list above when it matches. Otherwise one or two words, capitalized, no brand/size (e.g. "Aveia", "Leite").
 - quantity: number (integer or decimal)
-- unit: UN, KG, L, CX, etc.
+- unit: MUST be exactly one of: UNIT (unidade/cx/embalagem), LITER (L), MILLILITER (ml), KILOGRAM (kg), GRAM (g).
 - unit_price and total_value: numbers with 2 decimal places
 If a field cannot be extracted, use null. Include every item you identify on the receipt, and no others."""
     existing_str = ", ".join(sorted(existing_normalized_names)) if existing_normalized_names else "(none yet)"

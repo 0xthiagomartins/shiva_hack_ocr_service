@@ -3,8 +3,11 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# Prisma enum ItemUnit
+ItemUnitEnum = Enum("MILLILITER", "LITER", "KILOGRAM", "UNIT", "GRAM", name="ItemUnit")
 
 
 class Base(DeclarativeBase):
@@ -55,6 +58,7 @@ class Item(Base):
     normalizedName: Mapped[str] = mapped_column("normalizedName", String)
     category: Mapped[str] = mapped_column("category", String)
     quantity: Mapped[float] = mapped_column("quantity", Float, default=0.0)
+    unit: Mapped[str] = mapped_column("unit", ItemUnitEnum, nullable=False)
     unitPrice: Mapped[float] = mapped_column("unitPrice", Float, default=0.0)
     totalPrice: Mapped[float] = mapped_column("totalPrice", Float, default=0.0)
 

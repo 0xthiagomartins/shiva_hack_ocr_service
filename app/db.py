@@ -94,11 +94,32 @@ def create_receipt(receipt_id: str, user_id: str):
         session.commit()
 
 
+VALID_ITEM_UNITS = {"MILLILITER", "LITER", "KILOGRAM", "UNIT", "GRAM"}
+
+
+def _normalize_unit(value: str) -> str:
+    """Mapeia valor do LLM para enum ItemUnit; default UNIT."""
+    if not value:
+        return "UNIT"
+    u = str(value).strip().upper()
+    if u in VALID_ITEM_UNITS:
+        return u
+    if u in ("ML", "MILILITRO", "MILILITROS"):
+        return "MILLILITER"
+    if u in ("L", "LITRO", "LITROS"):
+        return "LITER"
+    if u in ("KG", "QUILO", "QUILOS"):
+        return "KILOGRAM"
+    if u in ("G", "GRAMA", "GRAMAS"):
+        return "GRAM"
+    return "UNIT"
+
+
 def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
     """
     Create Items from LLM output and update Receipt.totalAmount.
-    structured: {"items": [{"description", "normalized_name", "quantity", "unit_price", "total_value"}, ...]}
-    description -> rawName; normalized_name -> normalizedName (generic: "Aveia", "Leite", etc.).
+    structured: {"items": [{"description", "normalized_name", "quantity", "unit", "unit_price", "total_value"}, ...]}
+    unit: ItemUnit enum (UNIT, LITER, MILLILITER, KILOGRAM, GRAM).
     """
     from datetime import datetime
     items_data = structured.get("items") or []
@@ -110,6 +131,7 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
             tv = float(row.get("total_value") or (qty * up))
             raw = (row.get("description") or "").strip() or "—"
             normalized = (row.get("normalized_name") or "").strip() or raw
+            unit = _normalize_unit(row.get("unit") or "")
             total_amount += tv
             session.add(Item(
                 id=str(uuid.uuid4()),
@@ -118,6 +140,7 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
                 normalizedName=normalized,
                 category="Uncategorized",
                 quantity=qty,
+                unit=unit,
                 unitPrice=up,
                 totalPrice=tv,
             ))
