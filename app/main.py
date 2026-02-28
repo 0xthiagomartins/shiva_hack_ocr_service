@@ -22,7 +22,7 @@ from app.db import (
 )
 from app.llm import structure_receipt_with_llm
 from app.ocr import run_ocr_and_save_toon
-from app.preprocess import get_four_variations
+from app.preprocess import get_eight_variations
 
 app = FastAPI(title="OCR Cupons Fiscais", version="1.0.0")
 
@@ -59,7 +59,7 @@ def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
     """Preprocess, OCR, LLM, then insert Items and update Receipt.total_amount."""
     try:
         set_status(process_id, STATUS_PROCESSANDO)
-        images = get_four_variations(image_b64)
+        images = get_eight_variations(image_b64)
         toon_content = run_ocr_and_save_toon(images, process_id, TOON_DIR)
 
         structured = structure_receipt_with_llm(toon_content)

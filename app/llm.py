@@ -10,14 +10,15 @@ import litellm
 MODEL = "gpt-4o-mini"
 
 
-SYSTEM_PROMPT = """You extract receipt items from OCR text. The text may come from up to 4 OCR variants (may have misreads). Analyze all and output a single consolidated list of items.
+SYSTEM_PROMPT = """You extract receipt items from OCR text. The text may come from up to 8 OCR variants (different brightness/contrast, may have misreads). Analyze all and output a single consolidated list of items.
 
 CRITICAL: List ONLY items that appear in the OCR text. Do NOT invent, assume or add products that are not clearly present in the text. If the text is empty or unreadable, return {"items": []}.
 
 Reply ONLY with valid JSON, no markdown or extra text, in this format:
-{"items": [{"description": "product name", "quantity": number, "unit": "UN or KG or L etc", "unit_price": number with 2 decimals, "total_value": number with 2 decimals}]}
+{"items": [{"description": "product name as on receipt", "normalized_name": "generic product name", "quantity": number, "unit": "UN or KG or L etc", "unit_price": number with 2 decimals, "total_value": number with 2 decimals}]}
 
-- description: product/item name exactly as read or inferred from the text
+- description: product name exactly as read on the receipt (e.g. "AVEIA NESTLE FLOCOS 170G", "LEITE L VIDA ITALAC 1L")
+- normalized_name: generic product name only, no brand or size — e.g. "Aveia", "Leite", "Café", "Feijão". Strip brand (Nestle, Italac, etc.) and quantity/weight (170G, 1L). One or two words, capitalized.
 - quantity: number (integer or decimal)
 - unit: UN, KG, L, CX, etc.
 - unit_price and total_value: numbers with 2 decimal places

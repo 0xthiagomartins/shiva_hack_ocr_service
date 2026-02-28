@@ -1,4 +1,4 @@
-"""Tesseract nas 4 variações; geração do arquivo .toon."""
+"""Tesseract nas 8 variações; geração do arquivo .toon."""
 
 import os
 from pathlib import Path
@@ -17,12 +17,12 @@ def run_ocr_on_image(img: Image.Image) -> str:
 
 
 def run_ocr_on_variations(images: list[Image.Image]) -> list[str]:
-    """Executa OCR em cada uma das 4 variações. Retorna lista de 4 strings."""
+    """Executa OCR em cada uma das 8 variações. Retorna lista de 8 strings."""
     return [run_ocr_on_image(img) for img in images]
 
 
 def build_toon_content(texts: list[str]) -> str:
-    """Monta o conteúdo do arquivo .toon com as 4 variações."""
+    """Monta o conteúdo do arquivo .toon com as 8 variações."""
     parts = []
     for i, text in enumerate(texts, start=1):
         parts.append(TOON_SEPARATOR.format(i=i))
@@ -49,7 +49,7 @@ def run_ocr_and_save_toon(
     toon_dir: str,
 ) -> str:
     """
-    Executa OCR nas 4 variações, monta o .toon e salva.
+    Executa OCR nas 8 variações, monta o .toon e salva.
     Retorna o conteúdo do .toon (string) para envio ao LLM.
     """
     texts = run_ocr_on_variations(images)

@@ -97,8 +97,8 @@ def create_receipt(receipt_id: str, user_id: str):
 def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
     """
     Create Items from LLM output and update Receipt.totalAmount.
-    structured: {"items": [{"description", "quantity", "unit_price", "total_value"}, ...]}
-    Maps description -> rawName; normalizedName/category set for later AI step.
+    structured: {"items": [{"description", "normalized_name", "quantity", "unit_price", "total_value"}, ...]}
+    description -> rawName; normalized_name -> normalizedName (generic: "Aveia", "Leite", etc.).
     """
     from datetime import datetime
     items_data = structured.get("items") or []
@@ -109,12 +109,13 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
             up = float(row.get("unit_price") or 0)
             tv = float(row.get("total_value") or (qty * up))
             raw = (row.get("description") or "").strip() or "—"
+            normalized = (row.get("normalized_name") or "").strip() or raw
             total_amount += tv
             session.add(Item(
                 id=str(uuid.uuid4()),
                 receiptId=receipt_id,
                 rawName=raw,
-                normalizedName=raw,
+                normalizedName=normalized,
                 category="Uncategorized",
                 quantity=qty,
                 unitPrice=up,
