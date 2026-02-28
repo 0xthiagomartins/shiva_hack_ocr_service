@@ -1,1 +1,0 @@
-# Tests ocr_service

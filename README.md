@@ -91,15 +91,27 @@ shiva_hack_ocr_service/
 
 ## Como rodar (local)
 
+Use sempre o Python e o pip do venv (evita `ModuleNotFoundError` e `externally-managed-environment`):
+
 ```bash
 cd shiva_hack_ocr_service
+
+# 1. Criar venv (se ainda não existir)
 python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env        # editar .env (OPENAI_API_KEY, DATABASE_URL)
-# Tesseract: apt install tesseract-ocr tesseract-ocr-por
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 2. Instalar dependências no venv (obrigatório)
+.venv/bin/pip install -r requirements.txt
+
+# 3. Configurar .env (OPENAI_API_KEY, DATABASE_URL)
+cp .env.example .env   # editar .env
+
+# 4. Tesseract no sistema (Linux): sudo apt install tesseract-ocr tesseract-ocr-por
+
+# 5. Subir o servidor (usar o uvicorn do venv)
+.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+Não use `uvicorn` nem `pip` do sistema: use `.venv/bin/python -m uvicorn` e `.venv/bin/pip`.
 
 ## Testes
 

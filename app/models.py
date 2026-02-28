@@ -1,89 +1,101 @@
-"""SQLModel models aligned with Prisma schema (PostgreSQL). Table/column names match Prisma @@map and snake_case."""
+"""SQLAlchemy models aligned with Prisma schema: PascalCase table names, camelCase column names."""
 
 from datetime import datetime
 from typing import Optional
 
-from sqlmodel import Field, SQLModel
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class User(SQLModel, table=True):
-    __tablename__ = "user"
-    id: str = Field(primary_key=True)
-    name: str
-    email: str = Field(unique=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    email_verified: bool = False
-    image: Optional[str] = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+class Base(DeclarativeBase):
+    pass
 
 
-class ProcessStatus(SQLModel, table=True):
-    __tablename__ = "process_status"
-    process_id: str = Field(primary_key=True)
-    status: str
-    error_message: Optional[str] = None
-    created_at: str
-    updated_at: str
+class User(Base):
+    __tablename__ = "User"
+
+    id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    name: Mapped[str] = mapped_column("name", String)
+    email: Mapped[str] = mapped_column("email", String, unique=True)
+    createdAt: Mapped[datetime] = mapped_column("createdAt", DateTime(timezone=False), default=datetime.utcnow)
+    emailVerified: Mapped[bool] = mapped_column("emailVerified", Boolean, default=False)
+    image: Mapped[Optional[str]] = mapped_column("image", String, nullable=True)
+    updatedAt: Mapped[datetime] = mapped_column("updatedAt", DateTime(timezone=False), default=datetime.utcnow)
 
 
-class Receipt(SQLModel, table=True):
-    __tablename__ = "receipt"
-    id: str = Field(primary_key=True)
-    user_id: str = Field(foreign_key="user.id")
-    date: datetime = Field(default_factory=datetime.utcnow)
-    total_amount: float = 0.0
-    currency: str = Field(default="BRL")
-    image_url: Optional[str] = None
-    process_id: Optional[str] = Field(default=None, foreign_key="process_status.process_id", unique=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+class ProcessStatus(Base):
+    __tablename__ = "ProcessStatus"
+
+    processId: Mapped[str] = mapped_column("processId", String, primary_key=True)
+    status: Mapped[str] = mapped_column("status", String)
+    errorMessage: Mapped[Optional[str]] = mapped_column("errorMessage", String, nullable=True)
+    createdAt: Mapped[str] = mapped_column("createdAt", String)
+    updatedAt: Mapped[str] = mapped_column("updatedAt", String)
 
 
-class Item(SQLModel, table=True):
-    __tablename__ = "item"
-    id: str = Field(primary_key=True)
-    receipt_id: str = Field(foreign_key="receipt.id")
-    raw_name: str
-    normalized_name: str
-    category: str
-    quantity: float = 0.0
-    unit_price: float = 0.0
-    total_price: float = 0.0
+class Receipt(Base):
+    __tablename__ = "Receipt"
+
+    id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    userId: Mapped[str] = mapped_column("userId", String, ForeignKey("User.id"))
+    date: Mapped[datetime] = mapped_column("date", DateTime(timezone=False), default=datetime.utcnow)
+    totalAmount: Mapped[float] = mapped_column("totalAmount", Float, default=0.0)
+    currency: Mapped[str] = mapped_column("currency", String, default="BRL")
+    imageUrl: Mapped[Optional[str]] = mapped_column("imageUrl", String, nullable=True)
+    processId: Mapped[Optional[str]] = mapped_column("processId", String, ForeignKey("ProcessStatus.processId"), unique=True, nullable=True)
+    createdAt: Mapped[datetime] = mapped_column("createdAt", DateTime(timezone=False), default=datetime.utcnow)
 
 
-class Session(SQLModel, table=True):
-    __tablename__ = "session"
-    id: str = Field(primary_key=True)
-    expires_at: datetime
-    token: str = Field(unique=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    user_id: str = Field(foreign_key="user.id")
+class Item(Base):
+    __tablename__ = "Item"
+
+    id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    receiptId: Mapped[str] = mapped_column("receiptId", String, ForeignKey("Receipt.id"))
+    rawName: Mapped[str] = mapped_column("rawName", String)
+    normalizedName: Mapped[str] = mapped_column("normalizedName", String)
+    category: Mapped[str] = mapped_column("category", String)
+    quantity: Mapped[float] = mapped_column("quantity", Float, default=0.0)
+    unitPrice: Mapped[float] = mapped_column("unitPrice", Float, default=0.0)
+    totalPrice: Mapped[float] = mapped_column("totalPrice", Float, default=0.0)
 
 
-class Account(SQLModel, table=True):
-    __tablename__ = "account"
-    id: str = Field(primary_key=True)
-    account_id: str
-    provider_id: str
-    user_id: str = Field(foreign_key="user.id")
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    id_token: Optional[str] = None
-    access_token_expires_at: Optional[datetime] = None
-    refresh_token_expires_at: Optional[datetime] = None
-    scope: Optional[str] = None
-    password: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+class Session(Base):
+    __tablename__ = "Session"
+
+    id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    expiresAt: Mapped[datetime] = mapped_column("expiresAt", DateTime(timezone=False))
+    token: Mapped[str] = mapped_column("token", String, unique=True)
+    createdAt: Mapped[datetime] = mapped_column("createdAt", DateTime(timezone=False), default=datetime.utcnow)
+    updatedAt: Mapped[datetime] = mapped_column("updatedAt", DateTime(timezone=False), default=datetime.utcnow)
+    ipAddress: Mapped[Optional[str]] = mapped_column("ipAddress", String, nullable=True)
+    userAgent: Mapped[Optional[str]] = mapped_column("userAgent", String, nullable=True)
+    userId: Mapped[str] = mapped_column("userId", String, ForeignKey("User.id"))
 
 
-class Verification(SQLModel, table=True):
-    __tablename__ = "verification"
-    id: str = Field(primary_key=True)
-    identifier: str
-    value: str
-    expires_at: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+class Account(Base):
+    __tablename__ = "Account"
+
+    id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    accountId: Mapped[str] = mapped_column("accountId", String)
+    providerId: Mapped[str] = mapped_column("providerId", String)
+    userId: Mapped[str] = mapped_column("userId", String, ForeignKey("User.id"))
+    accessToken: Mapped[Optional[str]] = mapped_column("accessToken", String, nullable=True)
+    refreshToken: Mapped[Optional[str]] = mapped_column("refreshToken", String, nullable=True)
+    idToken: Mapped[Optional[str]] = mapped_column("idToken", String, nullable=True)
+    accessTokenExpiresAt: Mapped[Optional[datetime]] = mapped_column("accessTokenExpiresAt", DateTime(timezone=False), nullable=True)
+    refreshTokenExpiresAt: Mapped[Optional[datetime]] = mapped_column("refreshTokenExpiresAt", DateTime(timezone=False), nullable=True)
+    scope: Mapped[Optional[str]] = mapped_column("scope", String, nullable=True)
+    password: Mapped[Optional[str]] = mapped_column("password", String, nullable=True)
+    createdAt: Mapped[datetime] = mapped_column("createdAt", DateTime(timezone=False), default=datetime.utcnow)
+    updatedAt: Mapped[datetime] = mapped_column("updatedAt", DateTime(timezone=False), default=datetime.utcnow)
+
+
+class Verification(Base):
+    __tablename__ = "Verification"
+
+    id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    identifier: Mapped[str] = mapped_column("identifier", String)
+    value: Mapped[str] = mapped_column("value", String)
+    expiresAt: Mapped[datetime] = mapped_column("expiresAt", DateTime(timezone=False))
+    createdAt: Mapped[datetime] = mapped_column("createdAt", DateTime(timezone=False), default=datetime.utcnow)
+    updatedAt: Mapped[datetime] = mapped_column("updatedAt", DateTime(timezone=False), default=datetime.utcnow)

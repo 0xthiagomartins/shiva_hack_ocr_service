@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+load_dotenv()  # antes de importar app.db, para DATABASE_URL vir do .env
+
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -20,8 +23,6 @@ from app.db import (
 from app.llm import structure_receipt_with_llm
 from app.ocr import run_ocr_and_save_toon
 from app.preprocess import get_four_variations
-
-load_dotenv()
 
 app = FastAPI(title="OCR Cupons Fiscais", version="1.0.0")
 

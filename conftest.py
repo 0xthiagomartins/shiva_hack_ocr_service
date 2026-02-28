@@ -7,13 +7,13 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
 
 # User id usado nos testes; Receipt exige User existente (FK)
-TEST_USER_ID = "test-user-id"
+TEST_USER_ID = "fMicQESWZY7BMy6cTrqe09odj6uanNjC"
 
 
 @pytest.fixture(scope="session", autouse=True)
 def init_test_db():
-    """Cria tabelas e um User para os testes (Receipt tem FK para user.id)."""
-    from sqlmodel import Session
+    """Cria tabelas e um User para os testes (Receipt tem FK para User.id)."""
+    from sqlalchemy.orm import Session
     from app.db import engine, init_db
     from app.models import User
     init_db()

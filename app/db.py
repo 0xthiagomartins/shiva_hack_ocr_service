@@ -1,12 +1,13 @@
-"""DB layer — SQLModel, aligned with Prisma (User, Receipt, Item). ProcessStatus for pipeline."""
+"""DB layer — SQLAlchemy, aligned with Prisma (User, Receipt, Item, ProcessStatus)."""
 
 import os
 import uuid
 from pathlib import Path
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
-from app.models import Item, ProcessStatus, Receipt, User
+from app.models import Base, Item, ProcessStatus, Receipt, User
 
 # Path padrão para SQLite; ignorado quando DATABASE_URL é PostgreSQL
 _DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "receipts.db"
@@ -45,7 +46,7 @@ def init_db():
     """Create all tables. For SQLite (non-memory) only: ensure data dir exists."""
     if _IS_SQLITE and not _IS_MEMORY:
         Path(_DEFAULT_PATH).parent.mkdir(parents=True, exist_ok=True)
-    SQLModel.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
 
 def set_status(process_id: str, status: str, error_message: str | None = None):
@@ -54,11 +55,11 @@ def set_status(process_id: str, status: str, error_message: str | None = None):
         existing = session.get(ProcessStatus, process_id)
         if existing:
             existing.status = status
-            existing.error_message = error_message
-            existing.updated_at = now
+            existing.errorMessage = error_message
+            existing.updatedAt = now
             session.add(existing)
         else:
-            session.add(ProcessStatus(process_id=process_id, status=status, error_message=error_message, created_at=now, updated_at=now))
+            session.add(ProcessStatus(processId=process_id, status=status, errorMessage=error_message, createdAt=now, updatedAt=now))
         session.commit()
 
 
@@ -68,24 +69,26 @@ def get_status(process_id: str) -> dict | None:
     if not row:
         return None
     return {
-        "process_id": row.process_id,
+        "process_id": row.processId,
         "status": row.status,
-        "error_message": row.error_message,
-        "created_at": row.created_at,
-        "updated_at": row.updated_at,
+        "error_message": row.errorMessage,
+        "created_at": row.createdAt,
+        "updated_at": row.updatedAt,
     }
 
 
 def create_receipt(receipt_id: str, user_id: str):
-    """Create Receipt at start of processing (id = process_id). Links to ProcessStatus via process_id. User must exist."""
+    """Create Receipt at start of processing (id = process_id). Idempotent: skip if Receipt already exists."""
     from datetime import datetime
     with Session(engine) as session:
+        if session.get(Receipt, receipt_id) is not None:
+            return
         session.add(Receipt(
             id=receipt_id,
-            user_id=user_id,
-            process_id=receipt_id,
+            userId=user_id,
+            processId=receipt_id,
             date=datetime.utcnow(),
-            total_amount=0.0,
+            totalAmount=0.0,
             currency="BRL",
         ))
         session.commit()
@@ -93,9 +96,9 @@ def create_receipt(receipt_id: str, user_id: str):
 
 def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
     """
-    Create Items from LLM output and update Receipt.total_amount.
+    Create Items from LLM output and update Receipt.totalAmount.
     structured: {"items": [{"description", "quantity", "unit_price", "total_value"}, ...]}
-    Maps description -> raw_name; normalized_name/category set for later AI step.
+    Maps description -> rawName; normalizedName/category set for later AI step.
     """
     from datetime import datetime
     items_data = structured.get("items") or []
@@ -109,17 +112,17 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
             total_amount += tv
             session.add(Item(
                 id=str(uuid.uuid4()),
-                receipt_id=receipt_id,
-                raw_name=raw,
-                normalized_name=raw,  # categorizer service fills later
-                category="Uncategorized",  # categorizer service fills later
+                receiptId=receipt_id,
+                rawName=raw,
+                normalizedName=raw,
+                category="Uncategorized",
                 quantity=qty,
-                unit_price=up,
-                total_price=tv,
+                unitPrice=up,
+                totalPrice=tv,
             ))
         receipt = session.get(Receipt, receipt_id)
         if receipt:
-            receipt.total_amount = total_amount
+            receipt.totalAmount = total_amount
             session.add(receipt)
         session.commit()
 
@@ -127,12 +130,12 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
 def count_items_by_receipt(receipt_id: str) -> int:
     """Returns the number of Item rows for the given receipt_id."""
     with Session(engine) as session:
-        from sqlmodel import select
-        return len(session.exec(select(Item).where(Item.receipt_id == receipt_id)).all())
+        result = session.execute(select(Item).where(Item.receiptId == receipt_id))
+        return len(result.scalars().all())
 
 
 def get_receipt_total(receipt_id: str) -> float | None:
-    """Returns Receipt.total_amount for the given id, or None."""
+    """Returns Receipt.totalAmount for the given id, or None."""
     with Session(engine) as session:
         r = session.get(Receipt, receipt_id)
-        return float(r.total_amount) if r else None
+        return float(r.totalAmount) if r else None
