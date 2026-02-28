@@ -24,7 +24,7 @@ from app.db import (
     insert_receipt_data,
     set_status,
 )
-from app.llm import structure_receipt_with_llm
+from app.llm import MODEL as LLM_MODEL, structure_receipt_with_llm
 from app.ocr import run_ocr_and_save_toon
 from app.preprocess import get_eight_variations
 
@@ -61,6 +61,7 @@ class StatusResponse(BaseModel):
 def startup():
     init_db()
     Path(TOON_DIR).mkdir(parents=True, exist_ok=True)
+    logger.info("LLM model configured: %s (validate via GET /info or check logs after each /process)", LLM_MODEL)
 
 
 def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
@@ -115,6 +116,15 @@ def process_receipt(request: ProcessRequest, background_tasks: BackgroundTasks):
         message="Foto recebida e encaminhada para processamento.",
         status=STATUS_PROCESSANDO,
     )
+
+
+@app.get("/info")
+def info():
+    """Retorna configuração do serviço para validar qual modelo LLM está em uso."""
+    return {
+        "llm_model_configured": LLM_MODEL,
+        "source": "OPENAI_MODEL env var or default gpt-5-mini",
+    }
 
 
 @app.get("/status/{process_id}", response_model=StatusResponse)

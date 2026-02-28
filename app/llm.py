@@ -1,12 +1,14 @@
 """LiteLLM + OpenAI (modelo configurável); estruturação e coerência do resultado."""
 
 import json
+import logging
 import os
 
 import litellm
 
-# Modelo: gpt-5-mini (melhor) ou OPENAI_MODEL no .env; fallback gpt-4o-mini
+# Modelo: gpt-5-mini. Override com OPENAI_MODEL no .env
 MODEL = os.environ.get("OPENAI_MODEL", "gpt-5-mini")
+logger = logging.getLogger(__name__)
 
 
 def _build_system_prompt(existing_normalized_names: list[str]) -> str:
@@ -47,6 +49,12 @@ def structure_receipt_with_llm(toon_content: str, existing_normalized_names: lis
         ],
         api_key=os.environ.get("OPENAI_API_KEY"),
     )
+    # Validar qual modelo foi realmente usado (resposta da API)
+    actual_model = getattr(response, "model", None) or getattr(response, "model_id", None)
+    logger.info("LLM model: configured=%s | actual_from_api=%s", MODEL, actual_model or "unknown")
+    if actual_model and actual_model != MODEL:
+        logger.warning("LLM model mismatch: requested %s but API returned %s", MODEL, actual_model)
+
     content = response.choices[0].message.content.strip()
     # Remove possível markdown code block
     if content.startswith("```"):
