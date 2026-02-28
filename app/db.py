@@ -13,12 +13,22 @@ _DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "receipts.db"
 
 DATABASE_URL = os.environ.get("DATABASE_URL") or f"sqlite:///{_DEFAULT_PATH}"
 _IS_SQLITE = "sqlite" in DATABASE_URL
+_IS_MEMORY = ":memory:" in (DATABASE_URL or "")
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if _IS_SQLITE else {},
-    pool_pre_ping=True,  # detecta conexões mortas (útil para Postgres)
-)
+# Para SQLite :memory: usar StaticPool para todas as conexões verem o mesmo DB (evita "no such table" nos testes)
+if _IS_MEMORY:
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False} if _IS_SQLITE else {},
+        pool_pre_ping=True,
+    )
 
 # Pipeline status constants
 STATUS_PROCESSANDO = "em processamento"
@@ -32,8 +42,8 @@ def _now() -> str:
 
 
 def init_db():
-    """Create all tables. For SQLite only: ensure data dir exists."""
-    if _IS_SQLITE:
+    """Create all tables. For SQLite (non-memory) only: ensure data dir exists."""
+    if _IS_SQLITE and not _IS_MEMORY:
         Path(_DEFAULT_PATH).parent.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
 
