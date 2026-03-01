@@ -1,4 +1,4 @@
-"""DB layer — SQLAlchemy, aligned with Prisma (User, Receipt, Item, ProcessStatus)."""
+"""DB layer — SQLAlchemy, aligned with Prisma. Suporta PostgreSQL (DATABASE_URL no .env) ou SQLite."""
 
 import os
 import uuid
@@ -9,14 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Base, Item, ProcessStatus, Receipt, User
 
-# Path padrão para SQLite; ignorado quando DATABASE_URL é PostgreSQL
+# DATABASE_URL no .env: use postgresql://... para Postgres; fallback SQLite local
 _DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "receipts.db"
-
 DATABASE_URL = os.environ.get("DATABASE_URL") or f"sqlite:///{_DEFAULT_PATH}"
-_IS_SQLITE = "sqlite" in DATABASE_URL
+_IS_SQLITE = "sqlite" in (DATABASE_URL or "")
 _IS_MEMORY = ":memory:" in (DATABASE_URL or "")
 
-# Para SQLite :memory: usar StaticPool para todas as conexões verem o mesmo DB (evita "no such table" nos testes)
+# SQLite :memory: (testes) → StaticPool; Postgres/SQLite arquivo → pool normal
 if _IS_MEMORY:
     from sqlalchemy.pool import StaticPool
     engine = create_engine(
@@ -76,9 +75,24 @@ def get_status(process_id: str) -> dict | None:
     }
 
 
+def ensure_user_exists(user_id: str) -> None:
+    """Cria o User na tabela User (por id) se não existir, para satisfazer FK Receipt.userId -> User.id."""
+    from datetime import datetime
+    with Session(engine) as session:
+        if session.get(User, user_id) is not None:
+            return
+        session.add(User(
+            id=user_id,
+            name="User",
+            email=f"{user_id}@ocr.local",
+        ))
+        session.commit()
+
+
 def create_receipt(receipt_id: str, user_id: str):
     """Create Receipt at start of processing (id = process_id). Idempotent: skip if Receipt already exists."""
     from datetime import datetime
+    ensure_user_exists(user_id)
     with Session(engine) as session:
         if session.get(Receipt, receipt_id) is not None:
             return

@@ -26,7 +26,6 @@ from app.db import (
 )
 from app.llm import MODEL as LLM_MODEL, structure_receipt_with_llm
 from app.ocr import run_ocr_and_save_toon
-from app.preprocess import get_eight_variations
 
 app = FastAPI(title="OCR Cupons Fiscais", version="1.0.0")
 logger = logging.getLogger(__name__)
@@ -65,7 +64,7 @@ def startup():
 
 
 def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
-    """Preprocess, OCR, LLM, then insert Items and update Receipt.total_amount. Limitado por semáforo."""
+    """Imagem pura → GLM-OCR (Modal) → LLM → DB. Limitado por semáforo."""
     with _pipeline_semaphore:
         _run_pipeline_impl(process_id, user_id, image_b64)
 
@@ -73,21 +72,41 @@ def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
 def _run_pipeline_impl(process_id: str, user_id: str, image_b64: str) -> None:
     try:
         set_status(process_id, STATUS_PROCESSANDO)
-        images = get_eight_variations(image_b64)
-        toon_content = run_ocr_and_save_toon(images, process_id, TOON_DIR)
+        ocr_text = run_ocr_and_save_toon(image_b64, process_id, TOON_DIR)
+        _ocr_preview = (ocr_text[:200] + "…") if len(ocr_text) > 200 else ocr_text
+        logger.info(
+            "OCR result process_id=%s: len=%d chars | preview=%s",
+            process_id,
+            len(ocr_text),
+            repr(_ocr_preview) if _ocr_preview else "(empty)",
+        )
+        if not ocr_text or "placeholder" in ocr_text.lower():
+            logger.warning(
+                "OCR returned empty or placeholder text for process_id=%s (Modal app may still use placeholder; integrate real GLM-OCR)",
+                process_id,
+            )
 
         existing_names = get_existing_normalized_names(user_id)
-        structured = structure_receipt_with_llm(toon_content, existing_normalized_names=existing_names)
+        logger.info("Calling LLM for process_id=%s with %d chars from OCR", process_id, len(ocr_text))
+        structured = structure_receipt_with_llm(ocr_text, existing_normalized_names=existing_names)
 
         # Motor de coerência: se a LLM indicar que não foi possível interpretar, marcar erro e não inserir
         if structured.get("interpretation_ok") is False:
             msg = structured.get("interpretation_message") or "Could not interpret receipt."
-            logger.warning("Interpretation rejected for process_id=%s: %s", process_id, msg)
+            logger.warning(
+                "Interpretation rejected process_id=%s: reason=%s | ocr_preview=%s",
+                process_id,
+                msg,
+                repr(_ocr_preview) if _ocr_preview else "(empty)",
+            )
             set_status(process_id, STATUS_ERRO, error_message=msg)
             return
 
+        num_items = len(structured.get("items") or [])
+        logger.info("Interpretation OK process_id=%s: %d items extracted", process_id, num_items)
         insert_receipt_data(process_id, user_id, structured)  # receipt_id = process_id
         set_status(process_id, STATUS_PROCESSADO)
+        logger.info("Pipeline completed process_id=%s: status=%s", process_id, STATUS_PROCESSADO)
     except Exception as e:
         tb = traceback.format_exc()
         err_msg = f"{type(e).__name__}: {e}"

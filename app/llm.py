@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _build_system_prompt(existing_normalized_names: list[str]) -> str:
-    base = """You extract receipt items from OCR text. The text may come from up to 8 OCR variants (different brightness/contrast, may have misreads). Analyze all and output a single consolidated list of items.
+    base = """You extract receipt items from OCR text. The text comes from a single GLM-OCR extraction (raw receipt image, no preprocessing). Analyze and output a single list of items.
 
 COHERENCE / INTERPRETABILITY: If the OCR text is too unclear, blurry, empty, or you cannot reliably identify products (e.g. most lines are gibberish, numbers missing, or you would have to guess), you MUST set "interpretation_ok" to false and set "interpretation_message" to a short reason in English (e.g. "Could not interpret: OCR text too blurry or incomplete", "Could not interpret: no product names readable"). Do NOT return guessed items. Only set interpretation_ok true when you can extract at least one clear item from the text.
 
@@ -40,6 +40,8 @@ def structure_receipt_with_llm(toon_content: str, existing_normalized_names: lis
     existing_normalized_names: list of normalizedName already used by this user (evita duplicidade).
     """
     existing = existing_normalized_names or []
+    preview = (toon_content[:150] + "…") if len(toon_content) > 150 else toon_content
+    logger.info("LLM input: len=%d chars, preview=%s", len(toon_content), repr(preview) if preview else "(empty)")
     system_prompt = _build_system_prompt(existing)
     response = litellm.completion(
         model=MODEL,
@@ -53,7 +55,11 @@ def structure_receipt_with_llm(toon_content: str, existing_normalized_names: lis
     actual_model = getattr(response, "model", None) or getattr(response, "model_id", None)
     logger.info("LLM model: configured=%s | actual_from_api=%s", MODEL, actual_model or "unknown")
     if actual_model and actual_model != MODEL:
-        logger.warning("LLM model mismatch: requested %s but API returned %s", MODEL, actual_model)
+        # Mesmo modelo com sufixo de versão (ex: gpt-5-mini -> gpt-5-mini-2025-08-07) não é mismatch
+        if actual_model.startswith(MODEL) or MODEL in actual_model:
+            logger.debug("LLM using versioned model name: %s", actual_model)
+        else:
+            logger.warning("LLM model mismatch: requested %s but API returned %s", MODEL, actual_model)
 
     content = response.choices[0].message.content.strip()
     # Remove possível markdown code block
@@ -72,4 +78,13 @@ def structure_receipt_with_llm(toon_content: str, existing_normalized_names: lis
         data["interpretation_message"] = "Could not interpret: no reason provided"
     if "items" not in data:
         data["items"] = []
+    items_count = len(data["items"])
+    if data.get("interpretation_ok") is False:
+        logger.info(
+            "LLM returned interpretation_ok=false: message=%s, items=%d",
+            data.get("interpretation_message", ""),
+            items_count,
+        )
+    else:
+        logger.info("LLM returned interpretation_ok=true: items=%d", items_count)
     return data
