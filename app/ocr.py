@@ -40,6 +40,16 @@ def _resize_image_b64(image_b64: str) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _strip_ocr_artifacts(text: str) -> str:
+    """Remove tokens <|image|> e prefixo 'Text Recognition:' do output do GLM-OCR para economizar tokens no .toon e na LLM."""
+    if not text:
+        return text
+    t = text.replace("<|image|>", "").strip()
+    if t.startswith("Text Recognition:"):
+        t = t[len("Text Recognition:") :].strip()
+    return t
+
+
 def _ocr_url() -> str:
     """Modal expõe o web_endpoint na raiz da URL (ex: https://user--glm-ocr-ocr.modal.run)."""
     if not MODAL_OCR_URL:
@@ -66,8 +76,8 @@ def run_ocr_modal(image_b64: str) -> str:
         )
         r.raise_for_status()
         data = r.json()
-    text = (data.get("text") or "").strip()
-    logger.info("Modal OCR response: text len=%d chars", len(text))
+    text = _strip_ocr_artifacts((data.get("text") or "").strip())
+    logger.info("Modal OCR response: text len=%d chars (after stripping <|image|>)", len(text))
     if not text and data:
         # Modal pode ter retornado text vazio com "error" no body — logar para debug
         err = data.get("error")
