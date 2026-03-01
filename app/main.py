@@ -104,7 +104,7 @@ def _run_pipeline_impl(process_id: str, user_id: str, image_b64: str) -> None:
 
         num_items = len(structured.get("items") or [])
         logger.info("Interpretation OK process_id=%s: %d items extracted", process_id, num_items)
-        insert_receipt_data(process_id, user_id, structured)  # receipt_id = process_id
+        insert_receipt_data(process_id, user_id, structured, ocr_output=ocr_text)  # receipt_id = process_id
         set_status(process_id, STATUS_PROCESSADO)
         logger.info("Pipeline completed process_id=%s: status=%s", process_id, STATUS_PROCESSADO)
     except Exception as e:

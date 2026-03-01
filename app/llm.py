@@ -6,8 +6,8 @@ import os
 
 import litellm
 
-# Modelo: gpt-5-mini. Override com OPENAI_MODEL no .env
-MODEL = os.environ.get("OPENAI_MODEL", "gpt-5-mini")
+# Modelo: gpt-4o-mini (mais barato). Override com OPENAI_MODEL no .env
+MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 logger = logging.getLogger(__name__)
 
 

@@ -128,11 +128,11 @@ def _normalize_unit(value: str) -> str:
     return "UNIT"
 
 
-def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
+def insert_receipt_data(receipt_id: str, user_id: str, structured: dict, ocr_output: str | None = None):
     """
-    Create Items from LLM output and update Receipt.totalAmount.
+    Create Items from LLM output, update Receipt.totalAmount e Receipt.ocrOutput.
     structured: {"items": [{"description", "normalized_name", "quantity", "unit", "unit_price", "total_value"}, ...]}
-    unit: ItemUnit enum (UNIT, LITER, MILLILITER, KILOGRAM, GRAM).
+    ocr_output: texto OCR (mesmo valor salvo no .toon) para gravar em Receipt.ocrOutput.
     """
     from datetime import datetime
     items_data = structured.get("items") or []
@@ -160,6 +160,8 @@ def insert_receipt_data(receipt_id: str, user_id: str, structured: dict):
         receipt = session.get(Receipt, receipt_id)
         if receipt:
             receipt.totalAmount = total_amount
+            if ocr_output is not None:
+                receipt.ocrOutput = ocr_output
             session.add(receipt)
         session.commit()
 

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Prisma enum ItemUnit
@@ -46,6 +46,7 @@ class Receipt(Base):
     currency: Mapped[str] = mapped_column("currency", String, default="BRL")
     imageUrl: Mapped[Optional[str]] = mapped_column("imageUrl", String, nullable=True)
     processId: Mapped[Optional[str]] = mapped_column("processId", String, ForeignKey("ProcessStatus.processId"), unique=True, nullable=True)
+    ocrOutput: Mapped[Optional[str]] = mapped_column("ocrOutput", Text, nullable=True)
     createdAt: Mapped[datetime] = mapped_column("createdAt", DateTime(timezone=False), default=datetime.utcnow)
 
 
