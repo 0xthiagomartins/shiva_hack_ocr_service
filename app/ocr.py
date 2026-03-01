@@ -27,7 +27,10 @@ def run_ocr_modal(image_b64: str) -> str:
     Espera POST com body {"image_b64": "..."} e resposta {"text": "..."}.
     """
     url = _ocr_url()
-    logger.info("Calling Modal OCR: url=%s, image_b64 len=%d chars", url, len(image_b64 or ""))
+    logger.info(
+        "Calling Modal OCR: url=%s, image_b64 len=%d chars (aguarde até ~90s na 1ª chamada, cold start)",
+        url, len(image_b64 or ""),
+    )
     # read timeout alto: cold start na Modal + processamento da imagem
     timeout = httpx.Timeout(MODAL_OCR_TIMEOUT)
     with httpx.Client(timeout=timeout) as client:
