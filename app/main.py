@@ -26,6 +26,7 @@ from app.db import (
 )
 from app.llm import MODEL as LLM_MODEL, structure_receipt_with_llm
 from app.ocr import run_ocr_and_save_toon
+from app.storage import upload_receipt_image_b64
 
 app = FastAPI(title="OCR Cupons Fiscais", version="1.0.0")
 logger = logging.getLogger(__name__)
@@ -72,6 +73,11 @@ def run_pipeline(process_id: str, user_id: str, image_b64: str) -> None:
 def _run_pipeline_impl(process_id: str, user_id: str, image_b64: str) -> None:
     try:
         set_status(process_id, STATUS_PROCESSANDO)
+        # Upload opcional da imagem original para Cloudflare R2 (se configurado)
+        r2_key = upload_receipt_image_b64(image_b64, user_id=user_id, process_id=process_id)
+        if r2_key:
+            logger.info("Imagem process_id=%s armazenada no R2 com key=%s", process_id, r2_key)
+
         ocr_text = run_ocr_and_save_toon(image_b64, process_id, TOON_DIR)
         _ocr_preview = (ocr_text[:200] + "…") if len(ocr_text) > 200 else ocr_text
         logger.info(
@@ -104,7 +110,11 @@ def _run_pipeline_impl(process_id: str, user_id: str, image_b64: str) -> None:
 
         num_items = len(structured.get("items") or [])
         logger.info("Interpretation OK process_id=%s: %d items extracted", process_id, num_items)
-        insert_receipt_data(process_id, user_id, structured, ocr_output=ocr_text)  # receipt_id = process_id
+        insert_receipt_data(
+            process_id, user_id, structured,
+            ocr_output=ocr_text,
+            image_url=r2_key,
+        )  # receipt_id = process_id
         set_status(process_id, STATUS_PROCESSADO)
         logger.info("Pipeline completed process_id=%s: status=%s", process_id, STATUS_PROCESSADO)
     except Exception as e:
